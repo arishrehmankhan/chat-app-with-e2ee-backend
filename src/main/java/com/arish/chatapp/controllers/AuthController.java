@@ -32,9 +32,11 @@ public class AuthController {
 			
 			if(!userService.userExists(username)) {
 				
+				// hashing password before saving it to database
 				String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
 				user.setPassword(hashedPassword);
 				
+				// saving user
 				userService.saveUser(user);
 				
 				response.put("response", "Success");
@@ -51,6 +53,42 @@ public class AuthController {
 			
 			response.put("response", "Error");
 			response.put("message", validation);
+			
+		}
+		
+		return response;
+	}
+	
+	@PostMapping(value = "/login")
+	public HashMap<String, Object> login(@RequestBody User user) throws Exception {
+
+		HashMap<String, Object> response = new HashMap<>();
+		
+		final String username = user.getUsername();
+		final String password = user.getPassword();
+		
+		User tempUser = userService.findByUsername(username);
+		
+		if(tempUser != null) {
+			
+			BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), tempUser.getPassword());
+			
+			if(result.verified) {
+				
+				response.put("response", "Success");
+				response.put("jwt", "login successfull");
+				
+			} else {
+				
+				response.put("response", "Error");
+				response.put("message", "Incorrect username or password");
+				
+			}
+			
+		} else {
+			
+			response.put("response", "Error");
+			response.put("message", "Incorrect username or password");
 			
 		}
 		
