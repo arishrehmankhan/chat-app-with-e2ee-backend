@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.arish.chatapp.models.User;
 import com.arish.chatapp.services.UserService;
+import com.arish.chatapp.utils.JwtUtil;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 
@@ -17,6 +18,9 @@ public class AuthController {
 	
 	@Autowired
 	private UserService userService;
+	
+	@Autowired
+	private JwtUtil jwtUtil;
 
 	@PostMapping(value = "/register")
 	public HashMap<String, Object> register(@RequestBody User user) throws Exception {
@@ -71,12 +75,16 @@ public class AuthController {
 		
 		if(tempUser != null) {
 			
+			// check password
 			BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), tempUser.getPassword());
 			
 			if(result.verified) {
 				
+				// Generating JWT
+				String jwt = jwtUtil.generateToken(username);
+				
 				response.put("response", "Success");
-				response.put("jwt", "login successfull");
+				response.put("jwt", jwt);
 				
 			} else {
 				
