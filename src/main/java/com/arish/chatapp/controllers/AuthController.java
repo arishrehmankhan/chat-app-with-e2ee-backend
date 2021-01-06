@@ -29,8 +29,10 @@ public class AuthController {
 		
 		final String username = user.getUsername();
 		final String password = user.getPassword();
+		final String firstname = user.getFirstname();
+		final String lastname = user.getLastname();
 
-		final String validation = validate(username, password);
+		final String validation = validate(username, password, firstname);
 		
 		if(validation.equals("validated")) {
 			
@@ -103,7 +105,7 @@ public class AuthController {
 		return response;
 	}
 	
-	private String validate(String username, String password) throws Exception {
+	private String validate(String username, String password, String firstname) throws Exception {
 		
 		if(username == null || username.isEmpty())
 			return "Username missing.";
@@ -135,6 +137,9 @@ public class AuthController {
 		String specialChars = "(.*[,~,!,@,#,$,%,^,&,*,(,),-,_,=,+,[,{,],},|,;,:,<,>,/,?].*$)";
 		if (!password.matches(specialChars ))
 			return "Password should contain atleast one special character.";
+		
+		if (firstname == null || firstname.isEmpty())
+			return "First Name missing";
 		
 		return "validated";
 	}
