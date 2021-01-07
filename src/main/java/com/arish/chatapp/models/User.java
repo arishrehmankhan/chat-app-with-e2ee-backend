@@ -11,6 +11,7 @@ import javax.persistence.Id;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sun.istack.NotNull;
 
 @Entity
@@ -21,7 +22,12 @@ public class User {
 	@NotNull @Column(unique = true)
 	private String username;
 	@NotNull
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String password;
+	@NotNull
+	private String firstname;
+	@NotNull
+	private String lastname;
 	@CreationTimestamp
     private LocalDateTime createdAt;
     @UpdateTimestamp
@@ -45,4 +51,17 @@ public class User {
 	public void setPassword(String password) {
 		this.password = password;
 	}
+	public String getFirstname() {
+		return firstname;
+	}
+	public void setFirstname(String firstname) {
+		this.firstname = firstname;
+	}
+	public String getLastname() {
+		return lastname;
+	}
+	public void setLastname(String lastname) {
+		this.lastname = lastname;
+	}
+	
 }
