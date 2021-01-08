@@ -18,6 +18,7 @@ import com.sun.istack.NotNull;
 public class User {
 	@Id
 	@GeneratedValue(strategy=GenerationType.AUTO)
+	@JsonProperty
 	private Long id;
 	@NotNull @Column(unique = true)
 	private String username;

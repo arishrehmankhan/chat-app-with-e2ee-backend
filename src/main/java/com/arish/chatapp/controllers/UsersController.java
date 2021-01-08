@@ -14,8 +14,6 @@ import com.arish.chatapp.models.User;
 import com.arish.chatapp.services.UserService;
 import com.arish.chatapp.utils.JwtUtil;
 
-import at.favre.lib.crypto.bcrypt.BCrypt;
-
 @RestController
 public class UsersController {
 	
