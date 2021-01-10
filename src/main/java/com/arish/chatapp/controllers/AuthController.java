@@ -116,12 +116,11 @@ public class AuthController {
 
         if (tempUser != null) {
             String token = jwtUtil.generateToken(username);
-            System.out.println("under forgotten password if server : " + token);
-            user.setForgotPasswordToken(token);
+            tempUser.setForgotPasswordToken(token);
             // saving user
-            userService.saveUser(user);
+            userService.saveUser(tempUser);
             response.put("response", "Successful");
-            response.put("token", user.getForgotPasswordToken());
+            response.put("token", token);
             response.put("message", "Token added successfully to database");
 
         } else {
