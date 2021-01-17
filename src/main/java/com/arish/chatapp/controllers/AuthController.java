@@ -3,12 +3,8 @@ package com.arish.chatapp.controllers;
 import java.util.HashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.arish.chatapp.models.User;
@@ -16,200 +12,206 @@ import com.arish.chatapp.services.UserService;
 import com.arish.chatapp.utils.JwtUtil;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 public class AuthController {
 
-	@Autowired
-	private UserService userService;
+    @Autowired
+    private UserService userService;
 
-	@Autowired
-	private JwtUtil jwtUtil;
+    @Autowired
+    private JwtUtil jwtUtil;
 
-	@PostMapping(value = "/register")
-	public HashMap<String, Object> register(@RequestBody User user) throws Exception {
+    @PostMapping(value = "/register")
+    public HashMap<String, Object> register(@RequestBody User user) throws Exception {
 
-		HashMap<String, Object> response = new HashMap<>();
+        HashMap<String, Object> response = new HashMap<>();
 
-		final String username = user.getUsername();
-		final String password = user.getPassword();
-		final String firstname = user.getFirstname();
-		final String lastname = user.getLastname();
+        final String username = user.getUsername();
+        final String password = user.getPassword();
+        final String firstname = user.getFirstname();
+        final String lastname = user.getLastname();
 
-		final String validation = validate(username, password, firstname);
+        final String validation = validate(username, password, firstname);
 
-		if (validation.equals("validated")) {
+        if (validation.equals("validated")) {
 
-			if (!userService.userExists(username)) {
+            if (!userService.userExists(username)) {
 
-				// hashing password before saving it to database
-				String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
-				user.setPassword(hashedPassword);
+                // hashing password before saving it to database
+                String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
+                user.setPassword(hashedPassword);
 
-				// saving user
-				userService.saveUser(user);
+                // saving user
+                userService.saveUser(user);
 
-				response.put("response", "Success");
-				response.put("message", "User Registered");
+                response.put("response", "Success");
+                response.put("message", "User Registered");
 
-			} else {
+            } else {
 
-				response.put("response", "Error");
-				response.put("message", "User with this username already exists.");
+                response.put("response", "Error");
+                response.put("message", "User with this username already exists.");
 
-			}
+            }
 
-		} else {
+        } else {
 
-			response.put("response", "Error");
-			response.put("message", validation);
+            response.put("response", "Error");
+            response.put("message", validation);
 
-		}
+        }
 
-		return response;
-	}
+        return response;
+    }
 
-	@PostMapping(value = "/login")
-	public HashMap<String, Object> login(@RequestBody User user) throws Exception {
+    @PostMapping(value = "/login")
+    public HashMap<String, Object> login(@RequestBody User user) throws Exception {
 
-		HashMap<String, Object> response = new HashMap<>();
+        HashMap<String, Object> response = new HashMap<>();
 
-		final String username = user.getUsername();
-		final String password = user.getPassword();
+        final String username = user.getUsername();
+        final String password = user.getPassword();
 
-		User tempUser = userService.findByUsername(username);
+        User tempUser = userService.findByUsername(username);
 
-		if (tempUser != null) {
+        if (tempUser != null) {
 
-			// check password
-			BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), tempUser.getPassword());
+            // check password
+            BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), tempUser.getPassword());
 
-			if (result.verified) {
+            if (result.verified) {
 
-				// Generating JWT
-				String jwt = jwtUtil.generateToken(username);
+                // Generating JWT
+                String jwt = jwtUtil.generateToken(username);
 
-				response.put("response", "Success");
-				response.put("jwt", jwt);
+                response.put("response", "Success");
+                response.put("jwt", jwt);
 
-			} else {
+            } else {
 
-				response.put("response", "Error");
-				response.put("message", "Incorrect username or password");
+                response.put("response", "Error");
+                response.put("message", "Incorrect username or password");
 
-			}
+            }
 
-		} else {
+        } else {
 
-			response.put("response", "Error");
-			response.put("message", "Incorrect username or password");
+            response.put("response", "Error");
+            response.put("message", "Incorrect username or password");
 
-		}
+        }
 
-		return response;
-	}
+        return response;
+    }
 
-	@PostMapping(value = "/forgotPassword")
-	public HashMap<String, Object> forgotPassword(@RequestBody User user) throws Exception {
+    @PostMapping(value = "/forgotPassword")
+    public HashMap<String, Object> forgotPassword(@RequestBody User user) throws Exception {
 
-		HashMap<String, Object> response = new HashMap<>();
+        HashMap<String, Object> response = new HashMap<>();
 
-		final String username = user.getUsername();
+        final String username = user.getUsername();
 
-		User tempUser = userService.findByUsername(username);
+        User tempUser = userService.findByUsername(username);
 
-		if (tempUser != null) {
-			String token = jwtUtil.generateToken(username);
-			tempUser.setForgotPasswordToken(token);
-			// saving user
-			userService.saveUser(tempUser);
-			response.put("response", "Successful");
-			response.put("token", token);
-			response.put("message", "Token added successfully to database");
-
-		} else {
-
-			response.put("response", "Error");
-			response.put("message", "Email Not Registered");
-
-		}
-
-		return response;
-	}
-
-	@PostMapping(value = "/resetPassword")
-	public HashMap<String, Object> resetPassword(@RequestBody User user) throws Exception {
-
-		HashMap<String, Object> response = new HashMap<>();
-
-		final String username = user.getUsername();
-
-		User tempUser = userService.findByUsername(username);
-
-		if (tempUser != null) {
-//            here we shall write code
-
-			response.put("response", "Successful");
-			response.put("message", "Password updated Successfully");
-
-		} else {
-
-			response.put("response", "Error");
-			response.put("message", "Failed to open reset password page");
-
-		}
-
-		return response;
-	}
-
-
-	private String validate(String username, String password, String firstname) throws Exception {
-
-		if (username == null || username.isEmpty()) {
-			return "Username missing.";
-		}
-
-		if (password == null || password.isEmpty()) {
-			return "Password missing.";
-		}
-
-		if (username.length() < 8) {
-			return "Username must be more than 7 characters in length.";
-		}
-
-		if (password.length() > 15 || password.length() < 8) {
-			return "Password must be less than 16 and more than 7 characters in length.";
-		}
-
-		if (password.indexOf(username) > -1) {
-			return "Password must not be same as user name.";
-		}
-
-		String upperCaseChars = "(.*[A-Z].*)";
-		if (!password.matches(upperCaseChars)) {
-			return "Password must contain atleast one upper case alphabet.";
-		}
-
-		String lowerCaseChars = "(.*[a-z].*)";
-		if (!password.matches(lowerCaseChars)) {
-			return "Password must contain atleast one lower case alphabet.";
-		}
-
-		String numbers = "(.*[0-9].*)";
-		if (!password.matches(numbers)) {
-			return "Password must contain atleast one number.";
-		}
-
-		String specialChars = "(.*[,~,!,@,#,$,%,^,&,*,(,),-,_,=,+,[,{,],},|,;,:,<,>,/,?].*$)";
-		if (!password.matches(specialChars)) {
-			return "Password should contain atleast one special character.";
-		}
-
-		if (firstname == null || firstname.isEmpty()) {
-			return "First Name missing";
-		}
-
-		return "validated";
-	}
+        if (tempUser != null) {
+            String token = jwtUtil.generateToken(username);
+            tempUser.setForgotPasswordToken(token);
+            // saving user
+            userService.saveUser(tempUser);
+            response.put("response", "Successful");
+            response.put("token", token);
+            response.put("username", username);
+            response.put("message", "Token added successfully to database");
+
+        } else {
+
+            response.put("response", "Error");
+            response.put("message", "Email Not Registered");
+
+        }
+
+        return response;
+    }
+
+    @PostMapping(value = "/resetPassword")
+    public HashMap<String, String> resetPassword(@RequestParam String username, 
+            @RequestParam String token, @RequestParam String password) throws Exception {
+        HashMap<String, String> map = new HashMap<>();
+        User tempUser = userService.findByUsername(username);
+        
+        if (tempUser != null) {
+            if (tempUser.getForgotPasswordToken().equals(token)) {
+                // hashing password before saving it to database
+                String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
+                tempUser.setPassword(hashedPassword);
+                // saving user
+                userService.saveUser(tempUser);
+                map.put("status", "changed");
+                map.put("message", "Successfully changed password");
+                return map;
+            } else {
+                map.put("status", "Error");
+                map.put("message", "Something went wrong");
+                return map;
+            }
+
+        } else {
+
+            map.put("status", "userNotExist");
+            map.put("message", "User not exist !!");
+            return map;
+        }
+    }
+
+    private String validate(String username, String password, String firstname) throws Exception {
+
+        if (username == null || username.isEmpty()) {
+            return "Username missing.";
+        }
+
+        if (password == null || password.isEmpty()) {
+            return "Password missing.";
+        }
+
+        if (username.length() < 8) {
+            return "Username must be more than 7 characters in length.";
+        }
+
+        if (password.length() > 15 || password.length() < 8) {
+            return "Password must be less than 16 and more than 7 characters in length.";
+        }
+
+        if (password.indexOf(username) > -1) {
+            return "Password must not be same as user name.";
+        }
+
+        String upperCaseChars = "(.*[A-Z].*)";
+        if (!password.matches(upperCaseChars)) {
+            return "Password must contain atleast one upper case alphabet.";
+        }
+
+        String lowerCaseChars = "(.*[a-z].*)";
+        if (!password.matches(lowerCaseChars)) {
+            return "Password must contain atleast one lower case alphabet.";
+        }
+
+        String numbers = "(.*[0-9].*)";
+        if (!password.matches(numbers)) {
+            return "Password must contain atleast one number.";
+        }
+
+        String specialChars = "(.*[,~,!,@,#,$,%,^,&,*,(,),-,_,=,+,[,{,],},|,;,:,<,>,/,?].*$)";
+        if (!password.matches(specialChars)) {
+            return "Password should contain atleast one special character.";
+        }
+
+        if (firstname == null || firstname.isEmpty()) {
+            return "First Name missing";
+        }
+
+        return "validated";
+    }
 
 }
