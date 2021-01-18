@@ -12,6 +12,8 @@ import com.arish.chatapp.services.UserService;
 import com.arish.chatapp.utils.JwtUtil;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import com.arish.chatapp.javamail.JavaMail;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
@@ -32,7 +34,6 @@ public class AuthController {
         final String password = user.getPassword();
         final String firstname = user.getFirstname();
         final String lastname = user.getLastname();
-
         final String validation = validate(username, password, firstname);
 
         if (validation.equals("validated")) {
@@ -42,12 +43,21 @@ public class AuthController {
                 // hashing password before saving it to database
                 String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
                 user.setPassword(hashedPassword);
-
+                final String token = getAlphaNumericString(10);
+                user.setEmailVerificationToken(token);
                 // saving user
                 userService.saveUser(user);
-
-                response.put("response", "Success");
-                response.put("message", "User Registered");
+                JavaMail mail = new JavaMail();
+                String status = mail.sendMail(username, "Talkpad reset password",
+                        "Please click this link to verify email :  http://localhost:8080/verifyEmail?username="
+                        + username + "&token=" + token);
+                if (status.equals("Successful")) {
+                    response.put("response", "Success");
+                    response.put("message", "Mail verification link sent to your email.");
+                } else {
+                    response.put("response", "Error");
+                    response.put("message", "Error in sending mail");
+                }
 
             } else {
 
@@ -77,23 +87,27 @@ public class AuthController {
         User tempUser = userService.findByUsername(username);
 
         if (tempUser != null) {
+            if (tempUser.getEmailVerified() == true) {
+                // check password
+                BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), tempUser.getPassword());
 
-            // check password
-            BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), tempUser.getPassword());
+                if (result.verified) {
+                    // Generating JWT
+                    String jwt = jwtUtil.generateToken(username);
 
-            if (result.verified) {
+                    response.put("response", "Success");
+                    response.put("message", "Login successsful");
+                    response.put("jwt", jwt);
 
-                // Generating JWT
-                String jwt = jwtUtil.generateToken(username);
+                } else {
 
-                response.put("response", "Success");
-                response.put("jwt", jwt);
+                    response.put("response", "Error");
+                    response.put("message", "Incorrect username or password");
 
+                }
             } else {
-
                 response.put("response", "Error");
-                response.put("message", "Incorrect username or password");
-
+                response.put("message", "Please verify your email first !!");
             }
 
         } else {
@@ -116,17 +130,24 @@ public class AuthController {
         User tempUser = userService.findByUsername(username);
 
         if (tempUser != null) {
-            String token = jwtUtil.generateToken(username);
+            String token = getAlphaNumericString(10);
             tempUser.setForgotPasswordToken(token);
             // saving user
             userService.saveUser(tempUser);
-            response.put("response", "Successful");
-            response.put("token", token);
-            response.put("username", username);
-            response.put("message", "Token added successfully to database");
+            JavaMail mail = new JavaMail();
+            String status = mail.sendMail(username, "Talkpad reset password",
+                    "Please click this link :  http://localhost:8080/resetPassword?username="
+                    + username + "&token=" + token);
+
+            if (status.equals("Successful")) {
+                response.put("response", "Successful");
+                response.put("message", "Mail sent successfully");
+            } else {
+                response.put("response", "Error");
+                response.put("message", "Error in sending mail");
+            }
 
         } else {
-
             response.put("response", "Error");
             response.put("message", "Email Not Registered");
 
@@ -136,24 +157,30 @@ public class AuthController {
     }
 
     @PostMapping(value = "/resetPassword")
-    public HashMap<String, String> resetPassword(@RequestParam String username, 
+    public HashMap<String, String> resetPassword(@RequestParam String username,
             @RequestParam String token, @RequestParam String password) throws Exception {
         HashMap<String, String> map = new HashMap<>();
         User tempUser = userService.findByUsername(username);
-        
+        String passwordValidation = validatePassword(password);
         if (tempUser != null) {
-            if (tempUser.getForgotPasswordToken().equals(token)) {
-                // hashing password before saving it to database
-                String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
-                tempUser.setPassword(hashedPassword);
-                // saving user
-                userService.saveUser(tempUser);
-                map.put("status", "changed");
-                map.put("message", "Successfully changed password");
-                return map;
+            if (passwordValidation.equals("validated")) {
+                if (tempUser.getForgotPasswordToken().equals(token)) {
+                    // hashing password before saving it to database
+                    String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
+                    tempUser.setPassword(hashedPassword);
+                    // saving user
+                    userService.saveUser(tempUser);
+                    map.put("status", "changed");
+                    map.put("message", "Successfully changed password");
+                    return map;
+                } else {
+                    map.put("status", "Error");
+                    map.put("message", "Something went wrong");
+                    return map;
+                }
             } else {
                 map.put("status", "Error");
-                map.put("message", "Something went wrong");
+                map.put("message", "Password criteria incorrect");
                 return map;
             }
 
@@ -162,6 +189,25 @@ public class AuthController {
             map.put("status", "userNotExist");
             map.put("message", "User not exist !!");
             return map;
+        }
+    }
+
+    @GetMapping(value = "/verifyEmail")
+    public String verifyEmail(@RequestParam String username, @RequestParam String token) throws Exception {
+        User tempUser = userService.findByUsername(username);
+
+        if (tempUser != null) {
+            if (tempUser.getEmailVerificationToken().equals(token)) {
+                tempUser.setEmailVerified(true);
+                // saving user
+                userService.saveUser(tempUser);
+                return "Email verified successfully";
+            } else {
+                return "Unauthorised verification";
+            }
+
+        } else {
+            return "User not exist";
         }
     }
 
@@ -214,4 +260,60 @@ public class AuthController {
         return "validated";
     }
 
+    private String validatePassword(String password) throws Exception {
+
+        if (password == null || password.isEmpty()) {
+            return "Password missing.";
+        }
+
+        if (password.length() > 15 || password.length() < 8) {
+            return "Password must be less than 16 and more than 7 characters in length.";
+        }
+
+        String upperCaseChars = "(.*[A-Z].*)";
+        if (!password.matches(upperCaseChars)) {
+            return "Password must contain atleast one upper case alphabet.";
+        }
+
+        String lowerCaseChars = "(.*[a-z].*)";
+        if (!password.matches(lowerCaseChars)) {
+            return "Password must contain atleast one lower case alphabet.";
+        }
+
+        String numbers = "(.*[0-9].*)";
+        if (!password.matches(numbers)) {
+            return "Password must contain atleast one number.";
+        }
+
+        String specialChars = "(.*[,~,!,@,#,$,%,^,&,*,(,),-,_,=,+,[,{,],},|,;,:,<,>,/,?].*$)";
+        if (!password.matches(specialChars)) {
+            return "Password should contain atleast one special character.";
+        }
+
+        return "validated";
+    }
+
+    // function to generate a random string of length n 
+    private String getAlphaNumericString(int n) {
+        // chose a Character random from this String 
+        String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                + "0123456789"
+                + "abcdefghijklmnopqrstuvxyz";
+        // create StringBuffer size of AlphaNumericString 
+        StringBuilder sb = new StringBuilder(n);
+
+        for (int i = 0; i < n; i++) {
+            // generate a random number between 
+            // 0 to AlphaNumericString variable length 
+            int index
+                    = (int) (AlphaNumericString.length()
+                    * Math.random());
+
+            // add Character one by one in end of sb 
+            sb.append(AlphaNumericString
+                    .charAt(index));
+        }
+
+        return sb.toString();
+    }
 }
