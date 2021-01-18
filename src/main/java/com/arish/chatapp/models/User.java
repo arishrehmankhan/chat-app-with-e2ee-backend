@@ -32,8 +32,11 @@ public class User {
     private String firstname;
     @NotNull
     private String lastname;
-    @Value("")
-    private String forgotPasswordToken;
+    
+    private String forgotPasswordToken = "";
+    private String emailVerificationToken = "";
+    private Boolean emailVerified = false;
+    
     @CreationTimestamp
     private LocalDateTime createdAt;
     @UpdateTimestamp
@@ -85,6 +88,22 @@ public class User {
 
     public String getForgotPasswordToken() {
         return forgotPasswordToken;
+    }
+
+    public void setEmailVerificationToken(String token) {
+        emailVerificationToken = token;
+    }
+
+    public String getEmailVerificationToken() {
+        return emailVerificationToken;
+    }
+
+    public void setEmailVerified(Boolean value) {
+        emailVerified = value;
+    }
+
+    public Boolean getEmailVerified() {
+        return emailVerified;
     }
 
 }
